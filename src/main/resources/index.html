@@ -51,35 +51,61 @@
     <div id="chat-box"></div>
     <div>
         <input type="text" id="username" placeholder="Username" style="width: 80px; margin-right: 5px;">
-        <div> <input type="text" id="message-input" placeholder="Type a message...">
+        <input type="text" id="room-name" placeholder="Room Name" style="width: 80px; margin-right: 5px;"
+            value="general">
+        <button id="connect-btn">Join Room</button>
+        <hr>
+        <div> <input type="text" id="message-input" placeholder="Type a message..." disabled>
         </div>
 
-        <button id="send-btn">Send</button>
+        <button id="send-btn" disabled>Send</button>
     </div>
 
     <script>
         const chatBox = document.getElementById('chat-box');
         const messageInput = document.getElementById('message-input');
         const usernameInput = document.getElementById('username');
+        const roomInput = document.getElementById('room-name');
         const sendBtn = document.getElementById('send-btn');
+        const connectBtn = document.getElementById('connect-btn');
 
-        const socket = new WebSocket('ws://localhost:8025/ws/chat');
+        let socket;
 
-        socket.onmessage = function (event) {
-            console.log('Message received from server:', event.data);
-            const msg = JSON.parse(event.data);
-            const msgElement = document.createElement('div');
-            msgElement.classList.add('message');
-            msgElement.innerHTML = `<span class="sender">${msg.sender}:
+        function connect() {
+            const room = roomInput.value || 'general';
+            socket = new WebSocket('ws://localhost:8025/ws/chat/' + room);
+
+            socket.onmessage = function (event) {
+                console.log('Message received from server:', event.data);
+                const msg = JSON.parse(event.data);
+                const msgElement = document.createElement('div');
+                msgElement.classList.add('message');
+                msgElement.innerHTML = `<span class="sender">${msg.sender}:
                 </span> ${msg.content}
                 <span class="message-date">${msg.date || 'NA'}</span>`;
-            chatBox.appendChild(msgElement);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        };
+                chatBox.appendChild(msgElement);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            };
 
-        socket.onopen = function () {
-            console.log('Connected to server');
-        };
+            socket.onopen = function () {
+                console.log('Connected to room:', room);
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                roomInput.disabled = true;
+                connectBtn.disabled = true;
+                chatBox.innerHTML += `<div><i>Joined room: ${room}</i></div>`;
+            };
+
+            socket.onclose = function () {
+                console.log('Disconnected from server');
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+                roomInput.disabled = false;
+                connectBtn.disabled = false;
+            };
+        }
+
+        connectBtn.onclick = connect;
 
         function sendMessage() {
             const content = messageInput.value;
@@ -97,7 +123,6 @@
                 messageInput.value = '';
             }
         }
-
         sendBtn.onclick = sendMessage;
         messageInput.onkeypress = function (e) {
             if (e.key === 'Enter') sendMessage();
