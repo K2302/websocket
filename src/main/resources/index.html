@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Java WebSocket Chat</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #chat-box {
+            width: 400px;
+            height: 300px;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+
+        #message-input {
+            width: 320px;
+            padding: 5px;
+        }
+
+        #send-btn {
+            padding: 5px 15px;
+        }
+
+        .message {
+            margin-bottom: 5px;
+        }
+
+        .sender {
+            font-weight: bold;
+        }
+
+        .message-date {
+            font-size: 0.8em;
+            color: #888;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Chat Room</h2>
+    <div id="chat-box"></div>
+    <div>
+        <input type="text" id="username" placeholder="Username" style="width: 80px; margin-right: 5px;">
+        <div> <input type="text" id="message-input" placeholder="Type a message...">
+        </div>
+
+        <button id="send-btn">Send</button>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const messageInput = document.getElementById('message-input');
+        const usernameInput = document.getElementById('username');
+        const sendBtn = document.getElementById('send-btn');
+
+        const socket = new WebSocket('ws://localhost:8025/ws/chat');
+
+        socket.onmessage = function (event) {
+            console.log('Message received from server:', event.data);
+            const msg = JSON.parse(event.data);
+            const msgElement = document.createElement('div');
+            msgElement.classList.add('message');
+            msgElement.innerHTML = `<span class="sender">${msg.sender}:
+                </span> ${msg.content}
+                <span class="message-date">${msg.date || 'NA'}</span>`;
+            chatBox.appendChild(msgElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        socket.onopen = function () {
+            console.log('Connected to server');
+        };
+
+        function sendMessage() {
+            const content = messageInput.value;
+            const sender = usernameInput.value || 'Anonymous';
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (content) {
+                const msg = {
+                    sender: sender,
+                    content: content,
+                    date: timestamp,
+                    type: 'CHAT'
+                };
+                console.log('Sending message to server:', msg);
+                socket.send(JSON.stringify(msg));
+                messageInput.value = '';
+            }
+        }
+
+        sendBtn.onclick = sendMessage;
+        messageInput.onkeypress = function (e) {
+            if (e.key === 'Enter') sendMessage();
+        };
+    </script>
+</body>
+
+</html>
